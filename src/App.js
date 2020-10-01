@@ -1,15 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./styles.css";
 
 const GITHUB_API_ROOT = "https://api.github.com";
-async function fetchData() {
-  const response = await fetch(`${GITHUB_API_ROOT}/repos/facebook/react`);
+const AVAILABLE_REPOS = ["facebook/react", "angular/angular", "vuejs/vue"];
+async function fetchData(repository) {
+  const response = await fetch(`${GITHUB_API_ROOT}/repos/${repository}`);
   //  const JSONreponse = await response.json()
   //  return JSONreponse;
   return response.json();
 }
 
 export default function App() {
+  const [repoList, setRepoList] = useState([]);
   const [repoData, setRepoData] = useState(null);
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState(undefined);
@@ -18,22 +20,42 @@ export default function App() {
     setLoading(true);
     try {
       const githubResponse = await fetchData();
-      console.log(githubResponse);
       setRepoData(githubResponse);
     } catch {
       setError("There are somthing wrong,pleas try again later"); //setError(err);
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    setLoading(true);
+    const repoRequestPromises = AVAILABLE_REPOS.map((repo) => fetchData(repo));
+    //[Promise<pending>,Promise<pending>,Pomise<pending>]
+    Promise.all(repoRequestPromises).then((githubResponse) =>
+      setRepoList(githubResponse)
+    );
+
+    fetchData("vuejs/vue")
+      .then((githubResponse) => setRepoData(githubResponse))
+      .catch(() => setError("There are somting wrong,please try again later"))
+      .finally(() => setLoading(false));
+
+    return () => {};
+  }, []);
+
   return (
     <div>
       <div>
         <button onClick={handleFetchClick}>Fetch Data</button>
       </div>
-      {!isLoading && repoData && (
+      {!isLoading && repoList.length && (
         <div>
-          <h3>{repoData.full_name}</h3>
-          <span>{repoData.stargazers_count}</span>
+          {repoList.map((repo) => (
+            <>
+              <h3>name: {repoData.full_name}</h3>
+              <span>star: {repoData.stargazers_count}</span>
+            </>
+          ))}
         </div>
       )}
     </div>
